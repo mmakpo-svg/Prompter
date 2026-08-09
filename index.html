@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <!-- Viewport bloqueado para sensación de app nativa -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0A0A1A">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Prompter">
+    <title>📜 Nuestro Prompter</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        html, body { overscroll-behavior: none; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0A0A1A;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            touch-action: manipulation;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            height: 100vh;
+            max-height: 900px;
+            background: #1A1A2E;
+            border-radius: 24px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(233, 69, 96, 0.3);
+            position: relative;
+        }
+
+        /* TOP BAR */
+        .top-bar {
+            background: #1A1A2E;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #16213E;
+            flex-shrink: 0;
+        }
+
+        .top-bar h1 {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #E94560, #FF6B8A);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .top-bar button {
+            background: none;
+            border: none;
+            color: #E94560;
+            font-size: 22px;
+            cursor: pointer;
+            padding: 4px 8px;
+            transition: transform 0.2s;
+        }
+
+        .top-bar button:hover { transform: scale(1.1); }
+
+        /* PANTALLAS */
+        .screen {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+            padding: 16px 20px;
+            overflow: hidden;
+        }
+
+        .screen.active { display: flex; }
+
+        /* EDITOR */
+        #editorScreen { gap: 12px; }
+
+        #editorScreen input, #editorScreen textarea {
+            background: #16213E;
+            border: 2px solid transparent;
+            border-radius: 12px;
+            padding: 14px 16px;
+            color: white;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+
+        #editorScreen input:focus, #editorScreen textarea:focus { border-color: #E94560; }
+
+        #editorScreen textarea { resize: none; flex: 1; min-height: 160px; }
+
+        .controls-row { display: flex; align-items: center; gap: 16px; padding: 4px 0; }
+
+        .controls-row label { color: #aaa; font-size: 14px; font-weight: 600; }
+
+        .controls-row input[type="range"] {
+            flex: 1;
+            -webkit-appearance: none;
+            background: #16213E;
+            height: 6px;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        .controls-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #E94560;
+            cursor: pointer;
+        }
+
+        .controls-row input[type="range"]::-moz-range-thumb {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #E94560;
+            cursor: pointer;
+            border: none;
+        }
+
+        .speed-label {
+            color: #E94560;
+            font-weight: 700;
+            font-size: 16px;
+            min-width: 44px;
+            text-align: center;
+        }
+
+        .btn-row { display: flex; gap: 10px; }
+
+        .btn-primary, .btn-secondary {
+            border: none;
+            border-radius: 50px;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .btn-primary { background: #E94560; color: white; }
+        .btn-primary:hover { transform: scale(1.02); box-shadow: 0 4px 20px rgba(233, 69, 96, 0.5); }
+        .btn-primary:active { transform: scale(0.98); }
+
+        .btn-secondary { background: #16213E; color: white; border: 2px solid #E94560; }
+        .btn-secondary:hover { background: #E94560; }
+
+        /* PRESENTADOR */
+        #presenterScreen { padding: 0; background: black; position: relative; }
+
+        .presenter-content {
+            flex: 1;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 40px 30px 100px 30px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .presenter-text {
+            font-size: 28px;
+            line-height: 1.6;
+            color: white;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.8);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            width: 100%;
+            will-change: transform;
+        }
+
+        .presenter-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 16px;
+            right: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 10px 12px;
+            border-radius: 16px;
+            z-index: 10;
+        }
+
+        .presenter-controls button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 6px 8px;
+            transition: all 0.2s;
+            min-width: 36px;
+        }
+
+        .presenter-controls button:hover { transform: scale(1.1); }
+        .presenter-controls button.active { color: #E94560; }
+
+        .presenter-controls button.recording { color: #ff0000; animation: pulse 1s infinite; }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        .presenter-speed-control { display: flex; align-items: center; gap: 6px; }
+
+        .presenter-speed-control span {
+            color: white;
+            font-weight: 700;
+            font-size: 15px;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        /* BIBLIOTECA */
+        #libraryScreen { gap: 12px; }
+
+        .library-header { display: flex; gap: 8px; margin-bottom: 8px; }
+
+        .library-header input {
+            flex: 1;
+            background: #16213E;
+            border: 2px solid transparent;
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: white;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .library-header input:focus { border-color: #E94560; }
+
+        .script-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+
+        .script-card {
+            background: #16213E;
+            border-radius: 12px;
+            padding: 14px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .script-card:hover { background: #1E2A4A; }
+
+        .script-info h3 { font-size: 16px; font-weight: 600; color: white; }
+        .script-info p { font-size: 13px; color: #888; margin-top: 2px; }
+        .script-info .meta { font-size: 11px; color: #E94560; margin-top: 4px; }
+
+        .script-actions { display: flex; gap: 4px; }
+
+        .script-actions button {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px 6px;
+        }
+
+        .script-actions button:hover { color: #E94560; }
+        .script-actions button.delete:hover { color: #ff4444; }
+
+        .empty-library { text-align: center; color: #555; padding: 40px 0; font-size: 16px; }
+        .empty-library span { font-size: 48px; display: block; margin-bottom: 12px; }
+
+        .script-list::-webkit-scrollbar { width: 4px; }
+        .script-list::-webkit-scrollbar-track { background: transparent; }
+        .script-list::-webkit-scrollbar-thumb { background: #E94560; border-radius: 4px; }
+
+        /* TOAST */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #E94560;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 8px 24px rgba(233, 69, 96, 0.5);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* RESPONSIVE */
+        @media (max-width: 500px) {
+            .app-container { max-width: 100%; height: 100vh; max-height: none; border-radius: 0; }
+            .presenter-text { font-size: 24px; }
+        }
+
+        @media (min-width: 800px) {
+            .app-container { max-width: 420px; height: 90vh; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container" id="app">
+    <div class="top-bar">
+        <h1>📜 Nuestro Prompter</h1>
+        <button id="toggleLibraryBtn" title="Biblioteca">📚</button>
+    </div>
+
+    <!-- EDITOR -->
+    <div class="screen active" id="editorScreen">
+        <input type="text" id="scriptTitle" placeholder="📌 Título del guión" maxlength="50">
+        <textarea id="scriptContent" placeholder="✍️ Escribe tu texto aquí..."></textarea>
+
+        <div class="controls-row">
+            <label>⚡ Velocidad</label>
+            <input type="range" id="speedSlider" min="0.5" max="3.0" step="0.1" value="1.0">
+            <span class="speed-label" id="speedDisplay">1.0x</span>
+        </div>
+
+        <div class="controls-row">
+            <label>🔤 Tamaño</label>
+            <input type="range" id="fontSlider" min="18" max="48" step="1" value="28">
+            <span class="speed-label" id="fontDisplay">28px</span>
+        </div>
+
+        <div class="btn-row">
+            <button class="btn-secondary" id="saveBtn">💾 Guardar</button>
+            <button class="btn-primary" id="startBtn">▶️ Iniciar</button>
+        </div>
+    </div>
+
+    <!-- PRESENTADOR -->
+    <div class="screen" id="presenterScreen">
+        <div class="presenter-content" id="presenterContent">
+            <div class="presenter-text" id="presenterText">Escribe tu guión y pulsa "Iniciar"</div>
+        </div>
+
+        <div class="presenter-controls">
+            <button id="backBtn" title="Volver">✕</button>
+            <div class="presenter-speed-control">
+                <button id="speedDownBtn">➖</button>
+                <span id="presenterSpeedDisplay">1.0x</span>
+                <button id="speedUpBtn">➕</button>
+            </div>
+            <div>
+                <button id="mirrorBtn" title="Modo Espejo">🔄</button>
+                <button id="pauseBtn" title="Pausar">⏸️</button>
+                <button id="recordBtn" title="Grabar (simulado)">⏺️</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BIBLIOTECA -->
+    <div class="screen" id="libraryScreen">
+        <div class="library-header">
+            <input type="text" id="searchInput" placeholder="🔍 Buscar guiones...">
+            <button class="btn-secondary" id="closeLibraryBtn" style="padding: 8px 16px; flex:0;">✕</button>
+        </div>
+        <div class="script-list" id="scriptList"></div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    // ========== MANIFIESTO PWA (para instalar como app en Android) ==========
+    (function setupManifest() {
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="110" fill="#E94560"/><text x="256" y="352" font-size="260" text-anchor="middle">📜</text></svg>';
+        const icon = 'data:image/svg+xml,' + encodeURIComponent(svg);
+        const manifest = {
+            name: 'Nuestro Prompter',
+            short_name: 'Prompter',
+            start_url: location.pathname || './',
+            display: 'standalone',
+            background_color: '#0A0A1A',
+            theme_color: '#E94560',
+            icons: [
+                { src: icon, sizes: '192x192', type: 'image/svg+xml', purpose: 'any' },
+                { src: icon, sizes: '512x512', type: 'image/svg+xml', purpose: 'any' }
+            ]
+        };
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = 'data:application/manifest+json,' + encodeURIComponent(JSON.stringify(manifest));
+        document.head.appendChild(link);
+    })();
+
+    // ========== ESTADO ==========
+    const state = {
+        scripts: [],
+        currentScript: null,
+        speed: 1.0,
+        fontSize: 28,
+        isMirrored: false,
+        isRecording: false,
+        isPaused: false,
+        finished: false,
+        scrollPosition: 0,
+        scrollInterval: null,
+        currentView: 'editor'
+    };
+
+    let wakeLock = null;
+
+    const $ = (id) => document.getElementById(id);
+
+    // ========== UTILIDADES ==========
+    const escapeHtml = (text) => {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    };
+
+    function showToast(msg, duration = 2000) {
+        const toast = $('toast');
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), duration);
+    }
+
+    function saveScripts() {
+        localStorage.setItem('prompter_scripts', JSON.stringify(state.scripts));
+        localStorage.setItem('prompter_current_id', state.currentScript ? state.currentScript.id : '');
+    }
+
+    function loadScripts() {
+        const data = localStorage.getItem('prompter_scripts');
+        if (data) {
+            try { state.scripts = JSON.parse(data); } catch (e) { state.scripts = []; }
+        } else {
+            state.scripts = [{
+                id: Date.now(),
+                title: 'Bienvenida',
+                content: '¡Hola! Este es tu prompter personalizado.\n\nEscribe cualquier texto y ajusta la velocidad a tu gusto.\n\nPulsa ▶️ Iniciar cuando estés listo.\n\nEn presentación, toca la pantalla para pausar. ¡Disfruta! ✨',
+                speed: 1.0,
+                fontSize: 28,
+                createdAt: Date.now()
+            }];
+            saveScripts();
+        }
+        renderLibrary();
+    }
+
+    function generateId() { return Date.now() + Math.floor(Math.random() * 1000); }
+
+    // ========== PANTALLA ENCENDIDA (Wake Lock) ==========
+    async function requestWakeLock() {
+        try {
+            if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+        } catch (e) { /* silencioso */ }
+    }
+
+    function releaseWakeLock() {
+        if (wakeLock) { wakeLock.release(); wakeLock = null; }
+    }
+
+    // ========== PANTALLA COMPLETA ==========
+    function goFullscreen() {
+        try {
+            const el = document.documentElement;
+            if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+            else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+        } catch (e) {}
+    }
+
+    function exitFullscreen() {
+        try {
+            if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+        } catch (e) {}
+    }
+
+    // ========== PANTALLAS ==========
+    function showScreen(name) {
+        ['editorScreen', 'presenterScreen', 'libraryScreen'].forEach(id => $(id).classList.remove('active'));
+        $(name + 'Screen').classList.add('active');
+        state.currentView = name;
+    }
+
+    // ========== BIBLIOTECA ==========
+    function renderLibrary(filter = '') {
+        const filtered = state.scripts.filter(s =>
+            s.title.toLowerCase().includes(filter.toLowerCase()) ||
+            s.content.toLowerCase().includes(filter.toLowerCase())
+        );
+
+        if (filtered.length === 0) {
+            $('scriptList').innerHTML =
+                '<div class="empty-library"><span>📭</span>' +
+                (filter ? 'Sin resultados para "' + escapeHtml(filter) + '"' : 'No hay guiones guardados') +
+                '<br><small style="color:#444;">Crea uno en el editor</small></div>';
+            return;
+        }
+
+        $('scriptList').innerHTML = filtered.map(script => `
+            <div class="script-card" data-id="${script.id}">
+                <div class="script-info">
+                    <h3>${escapeHtml(script.title)}</h3>
+                    <p>${escapeHtml(script.content.substring(0, 60))}${script.content.length > 60 ? '...' : ''}</p>
+                    <div class="meta">🔤 ${script.fontSize || 28}px • ⚡ ${script.speed || 1.0}x • ${new Date(script.createdAt).toLocaleDateString()}</div>
+                </div>
+                <div class="script-actions">
+                    <button class="load-script" data-id="${script.id}" title="Cargar">▶️</button>
+                    <button class="delete delete-script" data-id="${script.id}" title="Eliminar">🗑️</button>
+                </div>
+            </div>
+        `).join('');
+
+        document.querySelectorAll('.load-script').forEach(btn => {
+            btn.addEventListener('click', (e) => { e.stopPropagation(); loadScriptById(parseInt(btn.dataset.id)); });
+        });
+        document.querySelectorAll('.delete-script').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (confirm('¿Eliminar este guión?')) deleteScriptById(parseInt(btn.dataset.id));
+            });
+        });
+        document.querySelectorAll('.script-card').forEach(card => {
+            card.addEventListener('click', () => loadScriptById(parseInt(card.dataset.id)));
+        });
+    }
+
+    function loadScriptById(id) {
+        const script = state.scripts.find(s => s.id === id);
+        if (!script) return;
+        state.currentScript = script;
+        $('scriptTitle').value = script.title;
+        $('scriptContent').value = script.content;
+        state.speed = script.speed || 1.0;
+        state.fontSize = script.fontSize || 28;
+        $('speedSlider').value = state.speed;
+        $('speedDisplay').textContent = state.speed.toFixed(1) + 'x';
+        $('fontSlider').value = state.fontSize;
+        $('fontDisplay').textContent = state.fontSize + 'px';
+        saveScripts();
+        showScreen('editor');
+        showToast('✅ Guión cargado');
+    }
+
+    function deleteScriptById(id) {
+        state.scripts = state.scripts.filter(s => s.id !== id);
+        saveScripts();
+        renderLibrary($('searchInput').value);
+        if (state.currentScript && state.currentScript.id === id) {
+            state.currentScript = null;
+            $('scriptTitle').value = '';
+            $('scriptContent').value = '';
+        }
+        showToast('🗑️ Guión eliminado');
+    }
+
+    function saveCurrentScript(silent = false) {
+        const title = $('scriptTitle').value.trim() || 'Sin título';
+        const content = $('scriptContent').value.trim();
+        if (!content) { if (!silent) showToast('⚠️ Escribe algo primero'); return false; }
+
+        const existing = state.scripts.find(s => s.id === (state.currentScript ? state.currentScript.id : null));
+        if (existing) {
+            existing.title = title;
+            existing.content = content;
+            existing.speed = state.speed;
+            existing.fontSize = state.fontSize;
+            existing.lastUsed = Date.now();
+        } else {
+            const nuevo = {
+                id: generateId(), title, content,
+                speed: state.speed, fontSize: state.fontSize,
+                createdAt: Date.now()
+            };
+            state.scripts.push(nuevo);
+            state.currentScript = nuevo;
+        }
+        saveScripts();
+        renderLibrary($('searchInput').value);
+        if (!silent) showToast('💾 Guardado');
+        return true;
+    }
+
+    // ========== PRESENTACIÓN ==========
+    function startPresentation() {
+        const content = $('scriptContent').value.trim();
+        if (!content) { showToast('⚠️ Escribe algo en el editor'); return; }
+        saveCurrentScript(true);
+
+        const el = $('presenterText');
+        el.textContent = content;
+        el.style.fontSize = state.fontSize + 'px';
+        $('presenterSpeedDisplay').textContent = state.speed.toFixed(1) + 'x';
+
+        state.scrollPosition = 0;
+        state.isPaused = false;
+        state.finished = false;
+        $('pauseBtn').textContent = '⏸️';
+        $('pauseBtn').classList.remove('active');
+        applyTransform();
+
+        showScreen('presenter');
+        goFullscreen();
+        requestWakeLock();
+        startScrolling();
+        showToast('👆 Toca la pantalla para pausar', 2500);
+    }
+
+    function applyTransform() {
+        const mirror = state.isMirrored ? ' scaleX(-1)' : '';
+        $('presenterText').style.transform = 'translateY(-' + state.scrollPosition + 'px)' + mirror;
+    }
+
+    function startScrolling() {
+        if (state.scrollInterval) clearInterval(state.scrollInterval);
+        state.scrollInterval = setInterval(() => {
+            if (state.isPaused) return;
+
+            const el = $('presenterText');
+            const container = $('presenterContent');
+            const maxScroll = el.offsetHeight - container.offsetHeight + 80;
+
+            if (maxScroll > 0 && state.scrollPosition >= maxScroll) {
+                state.finished = true;
+                stopScrolling();
+                showToast('✅ Fin — toca para reiniciar');
+                return;
+            }
+
+            state.scrollPosition += state.speed * 0.8;
+            applyTransform();
+        }, 16);
+    }
+
+    function stopScrolling() {
+        if (state.scrollInterval) { clearInterval(state.scrollInterval); state.scrollInterval = null; }
+    }
+
+    function togglePause() {
+        if (state.finished) {
+            state.finished = false;
+            state.scrollPosition = 0;
+            state.isPaused = false;
+            $('pauseBtn').textContent = '⏸️';
+            applyTransform();
+            startScrolling();
+            return;
+        }
+        state.isPaused = !state.isPaused;
+        $('pauseBtn').textContent = state.isPaused ? '▶️' : '⏸️';
+        $('pauseBtn').classList.toggle('active', state.isPaused);
+    }
+
+    function leavePresenter() {
+        stopScrolling();
+        releaseWakeLock();
+        exitFullscreen();
+        showScreen('editor');
+    }
+
+    function updateSpeed(delta) {
+        state.speed = Math.max(0.5, Math.min(3.0, Math.round((state.speed + delta) * 10) / 10));
+        $('presenterSpeedDisplay').textContent = state.speed.toFixed(1) + 'x';
+        $('speedSlider').value = state.speed;
+        $('speedDisplay').textContent = state.speed.toFixed(1) + 'x';
+    }
+
+    // ========== EVENTOS ==========
+    $('speedSlider').addEventListener('input', (e) => {
+        state.speed = parseFloat(e.target.value);
+        $('speedDisplay').textContent = state.speed.toFixed(1) + 'x';
+        $('presenterSpeedDisplay').textContent = state.speed.toFixed(1) + 'x';
+    });
+
+    $('fontSlider').addEventListener('input', (e) => {
+        state.fontSize = parseInt(e.target.value);
+        $('fontDisplay').textContent = state.fontSize + 'px';
+    });
+
+    $('startBtn').addEventListener('click', startPresentation);
+    $('saveBtn').addEventListener('click', () => saveCurrentScript());
+    $('backBtn').addEventListener('click', leavePresenter);
+
+    // Tocar el texto = pausa / reinicio
+    $('presenterContent').addEventListener('click', togglePause);
+
+    $('mirrorBtn').addEventListener('click', () => {
+        state.isMirrored = !state.isMirrored;
+        $('mirrorBtn').classList.toggle('active', state.isMirrored);
+        applyTransform();
+    });
+
+    $('pauseBtn').addEventListener('click', (e) => { e.stopPropagation(); togglePause(); });
+
+    $('recordBtn').addEventListener('click', () => {
+        state.isRecording = !state.isRecording;
+        $('recordBtn').classList.toggle('recording', state.isRecording);
+        $('recordBtn').textContent = state.isRecording ? '⏹️' : '⏺️';
+        showToast(state.isRecording ? '🎥 Grabación iniciada (simulada)' : '⏹️ Grabación detenida');
+    });
+
+    $('speedDownBtn').addEventListener('click', () => updateSpeed(-0.2));
+    $('speedUpBtn').addEventListener('click', () => updateSpeed(0.2));
+
+    $('toggleLibraryBtn').addEventListener('click', () => { renderLibrary($('searchInput').value); showScreen('library'); });
+    $('closeLibraryBtn').addEventListener('click', () => showScreen('editor'));
+    $('searchInput').addEventListener('input', () => renderLibrary($('searchInput').value));
+
+    // Recuperar wake lock si la app vuelve a primer plano
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && state.currentView === 'presenter') requestWakeLock();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (state.currentView === 'presenter') leavePresenter();
+            else if (state.currentView === 'library') showScreen('editor');
+        }
+        if (e.key === ' ' && state.currentView === 'presenter') { e.preventDefault(); togglePause(); }
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && state.currentView === 'editor') { e.preventDefault(); startPresentation(); }
+    });
+
+    // ========== INICIO ==========
+    loadScripts();
+
+    const lastId = localStorage.getItem('prompter_current_id');
+    const lastScript = (lastId && state.scripts.find(s => s.id === parseInt(lastId))) || state.scripts[0];
+    if (lastScript) {
+        state.currentScript = lastScript;
+        $('scriptTitle').value = lastScript.title;
+        $('scriptContent').value = lastScript.content;
+        state.speed = lastScript.speed || 1.0;
+        state.fontSize = lastScript.fontSize || 28;
+        $('speedSlider').value = state.speed;
+        $('speedDisplay').textContent = state.speed.toFixed(1) + 'x';
+        $('fontSlider').value = state.fontSize;
+        $('fontDisplay').textContent = state.fontSize + 'px';
+    }
+
+    console.log('📜 Prompter listo | Ctrl+Enter = iniciar | Espacio = pausar | Esc = salir');
+</script>
+
+</body>
+</html>
